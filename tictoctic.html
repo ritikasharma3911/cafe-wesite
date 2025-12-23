@@ -1,0 +1,180 @@
+<!-- Simple Tic-Tac-Toe Game
+     File: simple-tic-tac-toe.html
+     Instructions: Save this entire file as `simple-tic-tac-toe.html` and open it in your browser.
+     It's a two-player (local) game with a restart button and score tracking.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple Tic-Tac-Toe — Oasis Beans Demo</title>
+  <style>
+    :root{ --bg:#0f172a; --card:#0b1220; --accent:#10b981; --muted:#94a3b8; --glass: rgba(255,255,255,0.03);}    
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial; background:linear-gradient(180deg,#071028 0%, #071833 100%); color:#e6eef8; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px}
+    .card{background:var(--card); padding:20px; border-radius:12px; width:100%; max-width:420px; box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 6px; font-size:20px}
+    p.subtitle{margin:0 0 14px; color:var(--muted); font-size:13px}
+
+    .board{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0}
+    .cell{background:var(--glass); aspect-ratio:1/1; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:44px; cursor:pointer; user-select:none; transition:transform .08s ease, background .12s}
+    .cell:hover{transform:scale(1.03)}
+    .cell.taken{cursor:default; opacity:0.92}
+
+    .controls{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .btn{background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:8px; color:inherit; cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#34d399); color:#021; border:none}
+
+    .status{font-size:14px; color:var(--muted)}
+    .scoreboard{display:flex; gap:10px; margin-top:12px}
+    .score{background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-size:13px}
+
+    @media (max-width:420px){ .cell{font-size:36px} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Tic‑Tac‑Toe</h1>
+    <p class="subtitle">Simple 2-player game. Click a square to play.</p>
+
+    <div id="status" class="status">Player X's turn</div>
+
+    <div id="board" class="board" aria-label="tic tac toe board">
+      <!-- 9 cells inserted by JS -->
+    </div>
+
+    <div class="controls">
+      <button id="restart" class="btn">Restart</button>
+      <button id="resetScore" class="btn">Reset Score</button>
+      <button id="toggleFirst" class="btn">Toggle First: X</button>
+    </div>
+
+    <div class="scoreboard" id="scoreboard">
+      <div class="score">X: <span id="scoreX">0</span></div>
+      <div class="score">O: <span id="scoreO">0</span></div>
+      <div class="score">Draws: <span id="scoreD">0</span></div>
+    </div>
+  </div>
+
+  <script>
+    // Game state
+    const WIN_COMBOS = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    let board = Array(9).fill(null); // 'X' | 'O' | null
+    let turn = 'X';
+    let running = true;
+    let first = 'X';
+
+    // Score
+    const score = { X:0, O:0, D:0 };
+
+    // Elements
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const restartBtn = document.getElementById('restart');
+    const resetScoreBtn = document.getElementById('resetScore');
+    const toggleFirstBtn = document.getElementById('toggleFirst');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+    const scoreDEl = document.getElementById('scoreD');
+
+    // Build cells
+    for(let i=0;i<9;i++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.index = i;
+      cell.tabIndex = 0;
+      cell.addEventListener('click', onCellClick);
+      cell.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') onCellClick(e); });
+      boardEl.appendChild(cell);
+    }
+
+    function onCellClick(e){
+      if(!running) return;
+      const idx = Number(e.currentTarget.dataset.index);
+      if(board[idx]) return; // already taken
+      makeMove(idx, turn);
+      render();
+      const winner = checkWinner();
+      if(winner){
+        running=false;
+        if(winner==='Draw'){
+          statusEl.textContent = "It's a draw!";
+          score.D++;
+        } else {
+          statusEl.textContent = `Player ${winner} wins!`;
+          score[winner]++;
+        }
+        updateScores();
+      } else {
+        turn = turn === 'X' ? 'O' : 'X';
+        statusEl.textContent = `Player ${turn}'s turn`;
+      }
+    }
+
+    function makeMove(idx, player){
+      board[idx]=player;
+      const cell = boardEl.children[idx];
+      cell.textContent = player;
+      cell.classList.add('taken');
+    }
+
+    function checkWinner(){
+      for(const combo of WIN_COMBOS){
+        const [a,b,c] = combo;
+        if(board[a] && board[a] === board[b] && board[a] === board[c]){
+          return board[a];
+        }
+      }
+      if(board.every(x=>x!==null)) return 'Draw';
+      return null;
+    }
+
+    function render(){
+      for(let i=0;i<9;i++){
+        const cell = boardEl.children[i];
+        cell.textContent = board[i] || '';
+        if(board[i]) cell.classList.add('taken'); else cell.classList.remove('taken');
+      }
+    }
+
+    restartBtn.addEventListener('click', ()=>{
+      resetBoard();
+      running = true;
+      turn = first;
+      statusEl.textContent = `Player ${turn}'s turn`;
+    });
+
+    resetScoreBtn.addEventListener('click', ()=>{
+      score.X=0; score.O=0; score.D=0; updateScores();
+    });
+
+    toggleFirstBtn.addEventListener('click', ()=>{
+      first = first === 'X' ? 'O' : 'X';
+      toggleFirstBtn.textContent = `Toggle First: ${first}`;
+      // also restart
+      resetBoard(); running=true; turn=first; statusEl.textContent = `Player ${turn}'s turn`;
+    });
+
+    function resetBoard(){
+      board = Array(9).fill(null);
+      render();
+    }
+
+    function updateScores(){
+      scoreXEl.textContent = score.X;
+      scoreOEl.textContent = score.O;
+      scoreDEl.textContent = score.D;
+    }
+
+    // initial render
+    resetBoard(); updateScores(); statusEl.textContent = `Player ${turn}'s turn`;
+  </script>
+</body>
+</html>
